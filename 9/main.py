@@ -4,67 +4,85 @@ TEST_INPUT = """2199943210
 8767896789
 9899965678"""
 
-lines = TEST_INPUT.split('\n')
-def get_padded_grid(lines):
-    grid = []
-    for line in lines:
-        nums = [int(i) for i in line]
-        grid.append(nums)
-    num_cols = len(grid[0])
-    num_rows = len(grid)
-    
-    padded_grid = [[9 for i in range(num_cols + 2)]]
-    for j in grid:
-        padded_grid.append([9, *j, 9])
-    padded_grid.append([9 for i in range(num_cols + 2)])
-    return padded_grid
+lines = TEST_INPUT.split("\n")
 
-def find_low_points(lines):
-    padded_grid = get_padded_grid(lines)
-    low_points_heights = []
-    low_points_locations = []
 
-    num_rows = len(padded_grid)-2
-    num_cols = len(padded_grid[0])-2
-    for r in range(1, num_rows+1):
-        for c in range(1, num_cols+1):
-            if padded_grid[r -1][c] > padded_grid[r][c] and \
-            padded_grid[r][c] < padded_grid[r + 1][c] and \
-            padded_grid[r][c - 1] > padded_grid[r][c] and \
-            padded_grid[r][c] < padded_grid[r][c + 1]:
-                low_points_locations.append((r, c))
+class Grid:
+    def __init__(self, lines) -> None:
+        self.grid = []
+        for line in lines:
+            nums = [int(i) for i in line]
+            self.grid.append(nums)
+        num_cols = len(self.grid[0])
+        num_rows = len(self.grid)
+        self.padded_grid = [[9 for i in range(num_cols + 2)]]
+        for j in self.grid:
+            self.padded_grid.append([9, *j, 9])
+        self.padded_grid.append([9 for i in range(num_cols + 2)])
+        self.basin_locations=set()
+        self.keep_searching_basin = False
 
-    # print(low_points_locations)
-    low_points_heights = [padded_grid[i[0]][i[1]] for i in low_points_locations]
-    return low_points_heights, low_points_locations
-low_points_heights, low_points_locations = find_low_points(lines)
-print(sum(low_points_heights)+len(low_points_heights))
-print(low_points_heights)
 
-# lines = open('input.txt').read().split('\n')
-# low_points_heights = find_low_points(lines)
-# print(sum(low_points_heights)+len(low_points_heights))
+    def get_low_points(self):
+        self.low_points_heights = []
+        self.low_points_locations = []
 
-def get_basin_size(location, padded_grid):
-    basin_locations=[]
-    if len(location)>0:
-        r,c = location
-    else:
-        return 0
-    if padded_grid[r-1][c]!=9 and padded_grid[r-1][c]>padded_grid[r][c]:
-        basin_locations.append((r-1,c))
-    if padded_grid[r+1][c]!=9 and padded_grid[r+1][c]>padded_grid[r][c]:
-        basin_locations.append((r+1,c))
-    if padded_grid[r][c-1]!=9 and padded_grid[r][c-1]>padded_grid[r][c]:
-        basin_locations.append((r,c-1))
-    if padded_grid[r][c+1]!=9 and padded_grid[r][c+1]>padded_grid[r][c]:
-        basin_locations.append((r,c+1))
-    num_locs=len(basin_locations)
-    print(location, num_locs)
-    for loc in basin_locations:
-        num_locs+=get_basin_size(loc,padded_grid)
-    return num_locs
+        num_rows = len(self.padded_grid) - 2
+        num_cols = len(self.padded_grid[0]) - 2
+        for r in range(1, num_rows + 1):
+            for c in range(1, num_cols + 1):
+                if (
+                    self.padded_grid[r - 1][c] > self.padded_grid[r][c]
+                    and self.padded_grid[r][c] < self.padded_grid[r + 1][c]
+                    and self.padded_grid[r][c - 1] > self.padded_grid[r][c]
+                    and self.padded_grid[r][c] < self.padded_grid[r][c + 1]
+                ):
+                    self.low_points_locations.append((r, c))
 
-padded_grid = get_padded_grid(lines)
-for loc in low_points_locations:
-    print(loc,get_basin_size(loc,padded_grid))
+        # print(low_points_locations)
+        self.low_points_heights = [
+            self.padded_grid[i[0]][i[1]] for i in self.low_points_locations
+        ]
+
+    def get_basins(self,location):
+        self.keep_searching_basin=False
+        current_basin_locations = set(list(self.basin_locations))
+        r,c=location
+        self.basin_locations.add((r,c))
+        if self.padded_grid[r - 1][c] != 9 and self.padded_grid[r - 1][c] > self.padded_grid[r][c]:
+            self.basin_locations.add((r - 1, c))
+        if self.padded_grid[r + 1][c] != 9 and self.padded_grid[r + 1][c] > self.padded_grid[r][c]:
+            self.basin_locations.add((r + 1, c))
+        if self.padded_grid[r][c - 1] != 9 and self.padded_grid[r][c - 1] > self.padded_grid[r][c]:
+            self.basin_locations.add((r, c - 1))
+        if self.padded_grid[r][c + 1] != 9 and self.padded_grid[r][c + 1] > self.padded_grid[r][c]:
+            self.basin_locations.add((r, c + 1))
+        
+        if self.basin_locations - current_basin_locations:
+            self.keep_searching_basin=True
+        else:
+            self.keep_searching_basin=False
+        
+        if self.keep_searching_basin==True:
+            for loc in (self.basin_locations-current_basin_locations):
+                self.get_basins(loc)
+            else:
+                return
+    def reset_basin(self):
+        self.basin_locations=set()        
+def get_product_of_max_three_basins(lines):
+    g = Grid(lines)
+    g.get_low_points()
+    # print(g.low_points_locations)
+    basin_location_sizes=[]
+    for loc in g.low_points_locations:
+        g.get_basins(loc)
+        basin_location_sizes.append(len(g.basin_locations))
+        g.reset_basin()
+      
+    top_three = sorted(basin_location_sizes)[-3:]
+    return top_three[0]*top_three[1]*top_three[2]
+
+lines =open('./input.txt').read().split('\n')
+
+print(get_product_of_max_three_basins(lines))
